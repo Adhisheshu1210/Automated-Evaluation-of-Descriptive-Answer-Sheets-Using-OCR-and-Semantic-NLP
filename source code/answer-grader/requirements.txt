@@ -1,0 +1,25 @@
+# AI Answer Sheet Evaluator v2.1 - Requirements
+# Install: pip install -r requirements.txt
+# Tesseract system install: brew install tesseract (Mac) | apt install tesseract-ocr (Linux)
+
+# ── Web Framework ──────────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+pydantic>=2.6.0
+
+# ── Image Processing ───────────────────────────────────────────────────
+opencv-python>=4.9.0
+numpy>=1.26.0
+Pillow>=10.3.0
+
+# ── OCR ────────────────────────────────────────────────────────────────
+pytesseract>=0.3.10          # Tesseract wrapper (fallback OCR)
+
+# TrOCR — purpose-built handwriting OCR, FAR better than Tesseract
+# Downloads ~1.2 GB model on first run, cached after that
+transformers>=4.40.0         # HuggingFace (includes TrOCR)
+torch>=2.2.0                 # Required for TrOCR and sentence-transformers
+
+# ── NLP / Semantic Similarity ──────────────────────────────────────────
+sentence-transformers>=3.0.0  # Semantic similarity grading

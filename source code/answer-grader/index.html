@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Sheet Grader</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --paper: #f5f0e8;
+    --cream: #ede8dc;
+    --ruled: #c8bfaf;
+    --accent: #2d6a4f;
+    --accent2: #e76f51;
+    --warn: #e9c46a;
+    --error: #c0392b;
+    --success: #27ae60;
+    --line-color: #b8b0a0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    background-image: 
+      repeating-linear-gradient(
+        transparent, transparent 31px,
+        var(--line-color) 31px, var(--line-color) 32px
+      );
+    background-attachment: fixed;
+  }
+
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  header .subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--ruled);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+    margin-left: auto;
+  }
+  .status-dot.offline { background: var(--error); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* Tab navigation */
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    border-right: 2px solid var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .tab-btn:last-child { border-right: none; }
+  .tab-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .tab-btn:hover:not(.active) { background: var(--ruled); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: rgba(255,255,255,0.85);
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(4px);
+  }
+
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink);
+  }
+
+  .card-title .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 500;
+    background: var(--accent);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Form elements */
+  .field {
+    margin-bottom: 18px;
+  }
+
+  label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  label .opt {
+    color: var(--ruled);
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.65rem;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  textarea,
+  select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--paper);
+    border: 1.5px solid var(--ruled);
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    background: #fff;
+  }
+
+  textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .mode-btn {
+    padding: 8px 16px;
+    border: 1.5px solid var(--ruled);
+    border-radius: 6px;
+    background: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--ink);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .mode-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  /* File upload zone */
+  .upload-zone {
+    border: 2px dashed var(--ruled);
+    border-radius: 8px;
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.5);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(45,106,79,0.05);
+  }
+  .upload-zone.has-file {
+    border-color: var(--accent);
+    background: rgba(45,106,79,0.08);
+  }
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+  .upload-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .upload-hint {
+    font-size: 0.75rem;
+    color: var(--ruled);
+    margin-top: 4px;
+  }
+  .upload-filename {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-top: 6px;
+    font-weight: 500;
+  }
+
+  /* Two column layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Submit button */
+  .btn {
+    padding: 12px 28px;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .btn-primary:hover { background: var(--accent); border-color: var(--accent); }
+  .btn-primary:disabled {
+    background: var(--ruled);
+    border-color: var(--ruled);
+    cursor: not-allowed;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+  }
+  .btn-secondary:hover { background: var(--cream); }
+  .btn-danger {
+    background: transparent;
+    color: var(--error);
+    border-color: var(--error);
+    font-size: 0.7rem;
+    padding: 6px 14px;
+  }
+
+  /* Results panel */
+  .result-panel {
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 28px;
+    display: none;
+  }
+  .result-panel.show { display: block; }
+
+  .result-header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .result-header h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .grade-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .grade-Outstanding { background: #2d6a4f; color: white; }
+  .grade-Excellent   { background: #40916c; color: white; }
+  .grade-Good        { background: #52b788; color: white; }
+  .grade-Average     { background: #e9c46a; color: var(--ink); }
+  .grade-Below-Average { background: #e76f51; color: white; }
+  .grade-Poor        { background: #c0392b; color: white; }
+
+  .result-body { padding: 24px; background: rgba(255,255,255,0.9); }
+
+  /* Score display */
+  .score-display {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .score-big {
+    font-family: 'Fraunces', serif;
+    font-size: 3.5rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .score-denom {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    color: var(--ruled);
+  }
+  .score-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 500;
+    margin-left: 12px;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 8px;
+    background: var(--cream);
+    border-radius: 100px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    border: 1px solid var(--ruled);
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  /* Sub-scores grid */
+  .sub-scores {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .sub-score-item {
+    background: var(--cream);
+    border: 1px solid var(--ruled);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .sub-score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .sub-score-value {
+    font-family: 'Fraunces', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* Feedback sections */
+  .feedback-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .feedback-section h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .feedback-section.strengths h4 { color: var(--success); }
+  .feedback-section.improvements h4 { color: var(--accent2); }
+
+  .feedback-item {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+  }
+  .strengths .feedback-item { background: rgba(39,174,96,0.1); border-left: 3px solid var(--success); }
+  .improvements .feedback-item { background: rgba(231,111,81,0.1); border-left: 3px solid var(--accent2); }
+
+  /* Keywords */
+  .kw-section { margin-bottom: 20px; }
+  .kw-section h4 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .kw-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kw-chip {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+  .kw-chip.found { background: rgba(45,106,79,0.15); color: var(--accent); border: 1px solid var(--accent); }
+  .kw-chip.missing { background: rgba(192,57,43,0.1); color: var(--error); border: 1px solid var(--error); }
+
+  /* Extracted text */
+  .extracted-text {
+    background: var(--cream);
+    border: 1px solid var(--ruled);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: #555;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+
+  /* Multi-question question builder */
+  .q-builder { }
+  .q-item {
+    background: rgba(255,255,255,0.9);
+    border: 1.5px solid var(--ruled);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .q-item-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .q-num {
+    font-family: 'Fraunces', serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 32px;
+  }
+
+  /* Loading state */
+  .loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--cream);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error state */
+  .error-box {
+    background: rgba(192,57,43,0.08);
+    border: 1.5px solid var(--error);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 0.85rem;
+    color: var(--error);
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  /* Multi result */
+  .multi-overall {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .multi-overall-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ruled);
+    margin-bottom: 4px;
+  }
+  .multi-overall-score {
+    font-family: 'Fraunces', serif;
+    font-size: 2rem;
+    font-weight: 600;
+  }
+
+  .q-result {
+    border: 1.5px solid var(--ruled);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .q-result-header {
+    background: var(--cream);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ruled);
+    cursor: pointer;
+    user-select: none;
+  }
+  .q-result-header:hover { background: #e0d9ce; }
+  .q-result-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .q-result-score {
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .q-result-body {
+    padding: 18px;
+    background: rgba(255,255,255,0.9);
+    display: none;
+  }
+  .q-result-body.open { display: block; }
+
+  .divider {
+    height: 1px;
+    background: var(--ruled);
+    margin: 20px 0;
+  }
+
+  .tip-box {
+    background: rgba(233,196,106,0.2);
+    border: 1.5px solid var(--warn);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    margin-bottom: 18px;
+    color: #7a5c00;
+  }
+  .tip-box strong { font-weight: 600; }
+
+  @media (max-width: 600px) {
+    .two-col, .sub-scores, .feedback-row { grid-template-columns: 1fr; }
+    .sub-scores { grid-template-columns: 1fr 1fr; }
+    header { padding: 14px 20px; }
+    .container { padding: 24px 16px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Answer Sheet Grader</h1>
+    <div class="subtitle">AI-powered handwriting evaluation</div>
+  </div>
+  <div class="status-dot" id="statusDot" title="Server status"></div>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('single')">Single Question</button>
+    <button class="tab-btn" onclick="switchTab('multi')">Multi Question</button>
+    <button class="tab-btn" onclick="switchTab('ocr')">OCR Preview</button>
+  </div>
+
+  <!-- ─── SINGLE QUESTION TAB ─────────────────────────────────────── -->
+  <div class="tab-panel active" id="tab-single">
+
+    <div class="card">
+      <div class="card-title">
+        Student Answer Sheet
+        <span class="badge">Image Upload</span>
+      </div>
+      <div class="field">
+        <label>Upload student answer image</label>
+        <div class="upload-zone" id="studentZone" ondragover="dragOver(event,'studentZone')" ondragleave="dragLeave('studentZone')" ondrop="drop(event,'studentFile','studentZone')">
+          <input type="file" id="studentFile" accept="image/*" onchange="fileSelected('studentFile','studentZone')">
+          <div class="upload-icon">📄</div>
+          <div class="upload-label">Choose or drag image</div>
+          <div class="upload-hint">JPG, PNG, WEBP — photograph of handwritten answer</div>
+          <div class="upload-filename" id="studentFilename"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Model Answer</div>
+
+      <div class="tip-box" style="border-color:#c0392b; background:rgba(192,57,43,0.08)">
+        <strong>⚠️ Which image should be model answer?</strong><br><br>
+        <strong style="color:#c0392b">❌ Image 1 (dark ruled lines)</strong> → OCR fails completely → Wrong grades<br>
+        <strong style="color:#2d6a4f">✓ Image 4 (blue ink, plain white paper)</strong> → OCR works → Accurate grades<br><br>
+        Model answer image <strong>requires:</strong> blue/black ink on <strong>plain white paper</strong>.<br>
+        If your teacher copy has dark printed ruled lines → <strong>use "Type Answer" mode instead.</strong>
+      </div>
+
+      <div class="mode-toggle">
+        <button class="mode-btn active" onclick="setModelMode('text')">✏️ Type Answer</button>
+        <button class="mode-btn" onclick="setModelMode('image')">📷 Upload Image</button>
+      </div>
+
+      <div id="modelTextSection" class="field">
+        <label>Type the correct model answer</label>
+        <textarea id="modelAnswerText" rows="5" placeholder="Write the expected answer here...&#10;&#10;The more detailed, the better the grading accuracy."></textarea>
+      </div>
+
+      <div id="modelImageSection" class="field" style="display:none">
+        <div class="upload-zone" id="modelZone" ondragover="dragOver(event,'modelZone')" ondragleave="dragLeave('modelZone')" ondrop="drop(event,'modelFile','modelZone')">
+          <input type="file" id="modelFile" accept="image/*" onchange="fileSelected('modelFile','modelZone')">
+          <div class="upload-icon">📋</div>
+          <div class="upload-label">Teacher's model answer image</div>
+          <div class="upload-hint">Blue ink on plain white paper works best</div>
+          <div class="upload-filename" id="modelFilename"></div>
+        </div>
+      </div>
+
+      <div class="two-col" style="margin-top:16px">
+        <div class="field">
+          <label>Max Marks</label>
+          <input type="number" id="maxMarks" value="10" min="1" max="100" step="0.5">
+        </div>
+        <div class="field">
+          <label>Question Text <span class="opt">(optional)</span></label>
+          <input type="text" id="questionText" placeholder="What is a stub?">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Keywords <span class="opt">(optional — comma separated, auto-extracted if blank)</span></label>
+        <input type="text" id="keywords" placeholder="stub, driver, module, testing...">
+      </div>
+    </div>
+
+    <div class="error-box" id="singleError"></div>
+
+    <div style="display:flex; gap:12px">
+      <button class="btn btn-primary" id="singleBtn" onclick="gradeSingle()">Grade Answer</button>
+      <button class="btn btn-secondary" onclick="resetSingle()">Reset</button>
+    </div>
+
+    <div class="result-panel" id="singleResult"></div>
+  </div>
+
+  <!-- ─── MULTI QUESTION TAB ─────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-multi">
+
+    <div class="card">
+      <div class="card-title">
+        Student Answer Sheet
+        <span class="badge">Full Sheet</span>
+      </div>
+      <div class="tip-box">
+        <strong>📌 Tip:</strong> Students should write <strong>Q1, Q2, Q3</strong> clearly before each answer so the system can split answers automatically.
+      </div>
+      <div class="field">
+        <label>Upload full student answer sheet</label>
+        <div class="upload-zone" id="multiStudentZone" ondragover="dragOver(event,'multiStudentZone')" ondragleave="dragLeave('multiStudentZone')" ondrop="drop(event,'multiStudentFile','multiStudentZone')">
+          <input type="file" id="multiStudentFile" accept="image/*" onchange="fileSelected('multiStudentFile','multiStudentZone')">
+          <div class="upload-icon">📄</div>
+          <div class="upload-label">Choose or drag image</div>
+          <div class="upload-hint">One image containing all student answers</div>
+          <div class="upload-filename" id="multiStudentFilename"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Questions & Model Answers</div>
+      <div class="q-builder" id="qBuilder"></div>
+      <button class="btn btn-secondary" onclick="addQuestion()" style="margin-top:8px">+ Add Question</button>
+    </div>
+
+    <div class="error-box" id="multiError"></div>
+
+    <div style="display:flex; gap:12px">
+      <button class="btn btn-primary" id="multiBtn" onclick="gradeMulti()">Grade All Questions</button>
+      <button class="btn btn-secondary" onclick="resetMulti()">Reset</button>
+    </div>
+
+    <div class="result-panel" id="multiResult"></div>
+  </div>
+
+  <!-- ─── OCR PREVIEW TAB ─────────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-ocr">
+    <div class="card">
+      <div class="card-title">OCR Preview</div>
+      <p style="font-size:0.85rem; color:#555; margin-bottom:20px; line-height:1.5">
+        Upload any handwritten image to see what the OCR system reads. 
+        Use this to check image quality before grading.
+      </p>
+      <div class="field">
+        <label>Upload any handwritten image</label>
+        <div class="upload-zone" id="ocrZone" ondragover="dragOver(event,'ocrZone')" ondragleave="dragLeave('ocrZone')" ondrop="drop(event,'ocrFile','ocrZone')">
+          <input type="file" id="ocrFile" accept="image/*" onchange="fileSelected('ocrFile','ocrZone')">
+          <div class="upload-icon">🔍</div>
+          <div class="upload-label">Choose or drag image</div>
+          <div class="upload-hint">Student sheet, teacher copy, any handwriting</div>
+          <div class="upload-filename" id="ocrFilename"></div>
+        </div>
+      </div>
+
+      <div class="error-box" id="ocrError"></div>
+
+      <button class="btn btn-primary" id="ocrBtn" onclick="previewOCR()">Extract Text</button>
+    </div>
+
+    <div class="result-panel" id="ocrResult"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let modelMode = 'text';
+let qCount = 0;
+
+// ─── SERVER STATUS ────────────────────────────────────────────────────────────
+
+async function checkServer() {
+  try {
+    const r = await fetch(API + '/');
+    const dot = document.getElementById('statusDot');
+    if (r.ok) {
+      dot.className = 'status-dot';
+      dot.title = 'Server online';
+    } else throw new Error();
+  } catch {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusDot').title = 'Server offline — run: python3 main.py';
+  }
+}
+checkServer();
+setInterval(checkServer, 10000);
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['single','multi','ocr'][i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ─── FILE UPLOAD ──────────────────────────────────────────────────────────────
+
+function fileSelected(inputId, zoneId) {
+  const f = document.getElementById(inputId).files[0];
+  if (!f) return;
+  const zone = document.getElementById(zoneId);
+  zone.classList.add('has-file');
+  const fnEl = document.getElementById(inputId.replace('File','Filename').replace('file','Filename'));
+  if (fnEl) fnEl.textContent = '✓ ' + f.name;
+}
+
+function dragOver(e, zoneId) {
+  e.preventDefault();
+  document.getElementById(zoneId).classList.add('drag-over');
+}
+function dragLeave(zoneId) {
+  document.getElementById(zoneId).classList.remove('drag-over');
+}
+function drop(e, inputId, zoneId) {
+  e.preventDefault();
+  document.getElementById(zoneId).classList.remove('drag-over');
+  const input = document.getElementById(inputId);
+  const dt = new DataTransfer();
+  dt.items.add(e.dataTransfer.files[0]);
+  input.files = dt.files;
+  fileSelected(inputId, zoneId);
+}
+
+// ─── MODEL ANSWER MODE ───────────────────────────────────────────────────────
+
+function setModelMode(mode) {
+  modelMode = mode;
+  document.querySelectorAll('.mode-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['text','image'][i] === mode);
+  });
+  document.getElementById('modelTextSection').style.display = mode === 'text' ? 'block' : 'none';
+  document.getElementById('modelImageSection').style.display = mode === 'image' ? 'block' : 'none';
+}
+
+// ─── SINGLE GRADE ─────────────────────────────────────────────────────────────
+
+async function gradeSingle() {
+  const errEl = document.getElementById('singleError');
+  errEl.className = 'error-box';
+
+  const studentFile = document.getElementById('studentFile').files[0];
+  if (!studentFile) return showError('singleError', 'Please upload the student answer sheet image.');
+
+  const maxMarks = parseFloat(document.getElementById('maxMarks').value);
+  if (!maxMarks || maxMarks <= 0) return showError('singleError', 'Max marks must be a positive number.');
+
+  const btn = document.getElementById('singleBtn');
+  btn.disabled = true;
+  btn.textContent = 'Grading...';
+
+  const resultEl = document.getElementById('singleResult');
+  resultEl.className = 'result-panel show';
+  resultEl.innerHTML = `<div class="loading"><div class="spinner"></div> OCR-ing image and grading...</div>`;
+
+  try {
+    let result;
+
+    if (modelMode === 'text') {
+      const modelAnswer = document.getElementById('modelAnswerText').value.trim();
+      if (!modelAnswer) { btn.disabled = false; btn.textContent = 'Grade Answer'; return showError('singleError', 'Please type the model answer.'); }
+
+      const fd = new FormData();
+      fd.append('file', studentFile);
+      fd.append('model_answer', modelAnswer);
+      fd.append('max_marks', maxMarks);
+      fd.append('question_text', document.getElementById('questionText').value.trim());
+      fd.append('keywords', document.getElementById('keywords').value.trim());
+
+      const r = await fetch(API + '/grade/single', { method: 'POST', body: fd });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.statusText); }
+      result = await r.json();
+
+    } else {
+      const modelFile = document.getElementById('modelFile').files[0];
+      if (!modelFile) { btn.disabled = false; btn.textContent = 'Grade Answer'; return showError('singleError', 'Please upload the model answer image.'); }
+
+      const fd = new FormData();
+      fd.append('student_file', studentFile);
+      fd.append('model_answer_file', modelFile);
+      fd.append('max_marks', maxMarks);
+      fd.append('question_text', document.getElementById('questionText').value.trim());
+      fd.append('keywords', document.getElementById('keywords').value.trim());
+
+      const r = await fetch(API + '/grade/single/image', { method: 'POST', body: fd });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.statusText); }
+      result = await r.json();
+    }
+
+    resultEl.innerHTML = renderSingleResult(result);
+
+  } catch(e) {
+    resultEl.className = 'result-panel';
+    showError('singleError', 'Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Grade Answer';
+  }
+}
+
+function renderSingleResult(r) {
+  const pct = r.percentage || 0;
+  const barColor = pct >= 75 ? '#2d6a4f' : pct >= 50 ? '#e9c46a' : '#c0392b';
+  const gradeClass = 'grade-' + (r.grade_label || 'Poor').replace(' ', '-');
+
+  return `
+    <div class="result-header">
+      <h3>Grading Result</h3>
+      <span class="grade-badge ${gradeClass}">${r.grade_label || 'Poor'}</span>
+    </div>
+    <div class="result-body">
+      <div class="score-display">
+        <span class="score-big">${r.marks_awarded}</span>
+        <span class="score-denom">/ ${r.max_marks}</span>
+        <span class="score-pct">${pct}%</span>
+        ${r.student_ocr_quality !== undefined ? `<span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:${r.student_ocr_quality>=0.55?'#2d6a4f':r.student_ocr_quality>=0.35?'#e76f51':'#c0392b'};margin-left:16px">📷 OCR quality: ${Math.round(r.student_ocr_quality*100)}%</span>` : ''}
+      </div>
+      ${r.ocr_warning ? `<div style="background:rgba(231,111,81,0.1);border:1.5px solid #e76f51;border-radius:8px;padding:10px 14px;font-size:0.78rem;color:#c0392b;margin-bottom:16px">⚠️ ${r.ocr_warning}</div>` : ''}
+      ${r.model_ocr_warning ? `<div style="background:rgba(192,57,43,0.08);border:1.5px solid #c0392b;border-radius:8px;padding:10px 14px;font-size:0.78rem;color:#c0392b;margin-bottom:16px">⚠️ Model Answer OCR Warning: ${r.model_ocr_warning}</div>` : ''}
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${pct}%; background:${barColor}"></div>
+      </div>
+
+      <div class="sub-scores">
+        <div class="sub-score-item">
+          <span class="sub-score-label">Semantic</span>
+          <span class="sub-score-value">${Math.round((r.semantic_similarity||0)*100)}%</span>
+        </div>
+        <div class="sub-score-item">
+          <span class="sub-score-label">Coverage</span>
+          <span class="sub-score-value">${Math.round((r.sentence_coverage||0)*100)}%</span>
+        </div>
+        <div class="sub-score-item">
+          <span class="sub-score-label">Keywords</span>
+          <span class="sub-score-value">${Math.round((r.keyword_coverage||0)*100)}%</span>
+        </div>
+        <div class="sub-score-item">
+          <span class="sub-score-label">Length</span>
+          <span class="sub-score-value">${Math.round((r.length_ratio||0)*100)}%</span>
+        </div>
+      </div>
+
+      <div class="feedback-row">
+        <div class="feedback-section strengths">
+          <h4>✓ Strengths</h4>
+          ${(r.strengths||[]).length ? r.strengths.map(s => `<div class="feedback-item">${s}</div>`).join('') : '<div class="feedback-item">No strengths identified.</div>'}
+        </div>
+        <div class="feedback-section improvements">
+          <h4>↑ Improvements</h4>
+          ${(r.improvements||[]).length ? r.improvements.map(s => `<div class="feedback-item">${s}</div>`).join('') : '<div class="feedback-item">No improvements needed.</div>'}
+        </div>
+      </div>
+
+      ${r.keywords_found?.length || r.keywords_missing?.length ? `
+      <div class="kw-section">
+        <h4>Keyword Analysis</h4>
+        <div class="kw-chips">
+          ${(r.keywords_found||[]).map(k => `<span class="kw-chip found">✓ ${k}</span>`).join('')}
+          ${(r.keywords_missing||[]).map(k => `<span class="kw-chip missing">✗ ${k}</span>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <div class="divider"></div>
+      <div class="field">
+        <label>Extracted Text (what the system read)</label>
+        <div class="extracted-text">${(r.extracted_text||'(No text extracted)').replace(/</g,'&lt;')}</div>
+      </div>
+      ${r.model_answer_extracted ? `
+      <div class="field" style="margin-top:12px">
+        <label>Model Answer OCR (from teacher image)</label>
+        <div class="extracted-text">${r.model_answer_extracted.replace(/</g,'&lt;')}</div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+// ─── MULTI QUESTION ───────────────────────────────────────────────────────────
+
+function addQuestion() {
+  qCount++;
+  const n = qCount;
+  const builder = document.getElementById('qBuilder');
+  const div = document.createElement('div');
+  div.className = 'q-item';
+  div.id = 'q-' + n;
+  div.innerHTML = `
+    <div class="q-item-header">
+      <span class="q-num">Q${n}</span>
+      <input type="text" placeholder="Question text (optional)" 
+             id="qt-${n}" style="flex:1; margin:0; border:1.5px solid var(--ruled);">
+      <button class="btn btn-danger" onclick="removeQuestion(${n})">Remove</button>
+    </div>
+    <div class="field">
+      <label>Model Answer</label>
+      <textarea id="ma-${n}" rows="3" placeholder="Type the expected correct answer for Q${n}..."></textarea>
+    </div>
+    <div class="field">
+      <label>Max Marks</label>
+      <input type="number" id="mm-${n}" value="5" min="0.5" step="0.5" style="max-width:120px">
+    </div>
+  `;
+  builder.appendChild(div);
+}
+
+function removeQuestion(n) {
+  const el = document.getElementById('q-' + n);
+  if (el) el.remove();
+}
+
+async function gradeMulti() {
+  const errEl = document.getElementById('multiError');
+  errEl.className = 'error-box';
+
+  const studentFile = document.getElementById('multiStudentFile').files[0];
+  if (!studentFile) return showError('multiError', 'Please upload the student answer sheet.');
+
+  const questions = [];
+  let qNo = 0;
+  document.querySelectorAll('.q-item').forEach(el => {
+    const id = el.id.replace('q-','');
+    const ma = document.getElementById('ma-' + id)?.value.trim();
+    const mm = parseFloat(document.getElementById('mm-' + id)?.value);
+    const qt = document.getElementById('qt-' + id)?.value.trim();
+    if (!ma) return;
+    qNo++;
+    questions.push({ question_no: qNo, question_text: qt || `Q${qNo}`, model_answer: ma, max_marks: mm || 5, keywords: [] });
+  });
+
+  if (questions.length === 0) return showError('multiError', 'Add at least one question with a model answer.');
+
+  const btn = document.getElementById('multiBtn');
+  btn.disabled = true; btn.textContent = 'Grading...';
+
+  const resultEl = document.getElementById('multiResult');
+  resultEl.className = 'result-panel show';
+  resultEl.innerHTML = `<div class="loading"><div class="spinner"></div> Grading ${questions.length} question(s)...</div>`;
+
+  try {
+    const fd = new FormData();
+    fd.append('file', studentFile);
+    fd.append('questions', JSON.stringify(questions));
+
+    const r = await fetch(API + '/grade/multi', { method: 'POST', body: fd });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.statusText); }
+    const result = await r.json();
+
+    resultEl.innerHTML = renderMultiResult(result);
+  } catch(e) {
+    resultEl.className = 'result-panel';
+    showError('multiError', 'Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Grade All Questions';
+  }
+}
+
+function renderMultiResult(r) {
+  const pct = r.overall_percentage || 0;
+  const gradeClass = 'grade-' + (r.overall_grade || 'Poor').replace(' ', '-');
+  const barColor = pct >= 75 ? '#2d6a4f' : pct >= 50 ? '#e9c46a' : '#c0392b';
+
+  let qHtml = (r.question_results || []).map(q => {
+    const qPct = q.percentage || 0;
+    const qBar = qPct >= 75 ? '#2d6a4f' : qPct >= 50 ? '#e9c46a' : '#c0392b';
+    const qGradeClass = 'grade-' + (q.grade_label || 'Poor').replace(' ', '-');
+    return `
+      <div class="q-result">
+        <div class="q-result-header" onclick="toggleQResult(this)">
+          <div>
+            <div class="q-result-title">Q${q.question_no}${q.question_text ? ' — ' + q.question_text : ''}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--ruled);margin-top:2px">
+              Click to expand ↓
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="q-result-score">${q.marks_awarded} / ${q.max_marks}</div>
+            <span class="grade-badge ${qGradeClass}" style="font-size:0.6rem;padding:2px 8px">${q.grade_label}</span>
+          </div>
+        </div>
+        <div class="q-result-body">
+          <div class="progress-bar" style="margin-bottom:16px">
+            <div class="progress-fill" style="width:${qPct}%;background:${qBar}"></div>
+          </div>
+          <div class="sub-scores" style="grid-template-columns:repeat(4,1fr)">
+            <div class="sub-score-item"><span class="sub-score-label">Semantic</span><span class="sub-score-value">${Math.round((q.semantic_similarity||0)*100)}%</span></div>
+            <div class="sub-score-item"><span class="sub-score-label">Coverage</span><span class="sub-score-value">${Math.round((q.sentence_coverage||0)*100)}%</span></div>
+            <div class="sub-score-item"><span class="sub-score-label">Keywords</span><span class="sub-score-value">${Math.round((q.keyword_coverage||0)*100)}%</span></div>
+            <div class="sub-score-item"><span class="sub-score-label">Length</span><span class="sub-score-value">${Math.round((q.length_ratio||0)*100)}%</span></div>
+          </div>
+          <div class="feedback-row">
+            <div class="feedback-section strengths">
+              <h4>✓ Strengths</h4>
+              ${(q.strengths||[]).map(s=>`<div class="feedback-item">${s}</div>`).join('')||'<div class="feedback-item">—</div>'}
+            </div>
+            <div class="feedback-section improvements">
+              <h4>↑ Improvements</h4>
+              ${(q.improvements||[]).map(s=>`<div class="feedback-item">${s}</div>`).join('')||'<div class="feedback-item">—</div>'}
+            </div>
+          </div>
+          ${q.keywords_found?.length||q.keywords_missing?.length ? `
+          <div class="kw-section">
+            <h4>Keywords</h4>
+            <div class="kw-chips">
+              ${(q.keywords_found||[]).map(k=>`<span class="kw-chip found">✓ ${k}</span>`).join('')}
+              ${(q.keywords_missing||[]).map(k=>`<span class="kw-chip missing">✗ ${k}</span>`).join('')}
+            </div>
+          </div>` : ''}
+          <div class="field" style="margin-top:12px">
+            <label>Extracted Text</label>
+            <div class="extracted-text">${(q.extracted_text||'').replace(/</g,'&lt;')}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="result-header">
+      <h3>Multi-Question Results</h3>
+      <span class="grade-badge ${gradeClass}">${r.overall_grade}</span>
+    </div>
+    <div class="result-body">
+      <div class="multi-overall">
+        <div>
+          <div class="multi-overall-label">Total Score</div>
+          <div class="multi-overall-score">${r.total_marks_awarded} / ${r.total_max_marks}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="multi-overall-label">Percentage</div>
+          <div class="multi-overall-score">${r.overall_percentage}%</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${pct}%;background:${pct>=75?'#2d6a4f':pct>=50?'#e9c46a':'#c0392b'}"></div>
+      </div>
+      ${qHtml}
+    </div>
+  `;
+}
+
+function toggleQResult(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ─── OCR PREVIEW ─────────────────────────────────────────────────────────────
+
+async function previewOCR() {
+  const errEl = document.getElementById('ocrError');
+  errEl.className = 'error-box';
+
+  const file = document.getElementById('ocrFile').files[0];
+  if (!file) return showError('ocrError', 'Please upload an image.');
+
+  const btn = document.getElementById('ocrBtn');
+  btn.disabled = true; btn.textContent = 'Extracting...';
+
+  const resultEl = document.getElementById('ocrResult');
+  resultEl.className = 'result-panel show';
+  resultEl.innerHTML = `<div class="loading"><div class="spinner"></div> Running OCR...</div>`;
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(API + '/ocr/extract', { method: 'POST', body: fd });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.statusText); }
+    const result = await r.json();
+
+    resultEl.innerHTML = `
+      <div class="result-header">
+        <h3>OCR Result</h3>
+        <span style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--ruled)">${result.word_count} words</span>
+      </div>
+      <div class="result-body">
+        <div class="field">
+          <label>Cleaned Text</label>
+          <div class="extracted-text" style="max-height:200px">${(result.cleaned_text||'').replace(/</g,'&lt;')}</div>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label>Auto Keywords Detected</label>
+          <div class="kw-chips" style="margin-top:6px">
+            ${(result.auto_keywords||[]).map(k=>`<span class="kw-chip found">${k}</span>`).join('')}
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="field">
+          <label>Raw Text (unprocessed)</label>
+          <div class="extracted-text">${(result.raw_text||'').replace(/</g,'&lt;')}</div>
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    resultEl.className = 'result-panel';
+    showError('ocrError', 'Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Extract Text';
+  }
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = '⚠ ' + msg;
+  el.className = 'error-box show';
+}
+
+function resetSingle() {
+  document.getElementById('studentFile').value = '';
+  document.getElementById('modelFile').value = '';
+  document.getElementById('modelAnswerText').value = '';
+  document.getElementById('questionText').value = '';
+  document.getElementById('keywords').value = '';
+  document.getElementById('maxMarks').value = '10';
+  document.getElementById('studentZone').classList.remove('has-file');
+  document.getElementById('modelZone').classList.remove('has-file');
+  document.getElementById('studentFilename').textContent = '';
+  document.getElementById('modelFilename').textContent = '';
+  document.getElementById('singleResult').className = 'result-panel';
+  document.getElementById('singleError').className = 'error-box';
+}
+
+function resetMulti() {
+  document.getElementById('multiStudentFile').value = '';
+  document.getElementById('multiStudentZone').classList.remove('has-file');
+  document.getElementById('multiStudentFilename').textContent = '';
+  document.getElementById('qBuilder').innerHTML = '';
+  qCount = 0;
+  document.getElementById('multiResult').className = 'result-panel';
+  document.getElementById('multiError').className = 'error-box';
+}
+
+// Initialize with 2 questions for multi-tab
+addQuestion(); addQuestion();
+</script>
+</body>
+</html>
