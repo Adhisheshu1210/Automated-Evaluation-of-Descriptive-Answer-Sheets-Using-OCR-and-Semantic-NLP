@@ -283,11 +283,6 @@ The system has been tested for:
 * Sathvik Rudam
 * Nikhitha Rayindla
 
----
-
-## 🎥 Demo Video
-
-https://www.youtube.com/watch?v=JCERvxT2qTk
 
 ---
 
